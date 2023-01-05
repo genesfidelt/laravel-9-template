@@ -1,5 +1,5 @@
 {
-    "name": "laravel/laravel",
+    "name": "nms-ph-itd/laravel-template",
     "type": "project",
     "description": "The Laravel Framework.",
     "keywords": ["framework", "laravel"],
