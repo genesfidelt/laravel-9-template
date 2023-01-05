@@ -1,0 +1,33 @@
+version: '3.7'
+
+services:
+  template_backend:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    container_name: template_backend
+    restart: always
+    volumes:
+      - ./src:/app
+      - /app/vendor
+    networks:
+      - nginx_proxy-network
+
+  template_mariadb:
+    image: mariadb:10.11.1-rc
+    container_name: template_mariadb
+    ports:
+      - 3366:3306
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_PASSWORD=devpassword
+      - MYSQL_USER=dev_user
+      - MYSQL_DATABASE=db_backend_local
+    networks:
+      - nginx_proxy-network
+
+networks:
+  nginx_proxy-network:
+    external: true

@@ -1,0 +1,52 @@
+---
+- hosts: '{{ target | default("localhost") }}'
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+  - name: Log into aws registry
+    shell: aws ecr get-login-password --region us-east-2 | sudo docker login --username AWS --password-stdin 567540846696.dkr.ecr.us-east-2.amazonaws.com
+    no_log: true
+
+  - name: Check for custom docker network if it exist
+    docker_network:
+      name: "{{ docker_network_staging }}"
+      state: present
+
+  - name: Pull and start container, connect to network and link
+    docker_container:
+      name: "{{ container_name }}"
+      image: 567540846696.dkr.ecr.us-east-2.amazonaws.com/{{ image_tag }}
+      pull: "{{ image | default(true) }}"
+      restart_policy: always
+      state: started
+      recreate: yes
+      # volumes:
+      #   - /mnt/nfsshare/nmsapps.com/template.backend.com/uploads:/app/public/uploads
+      networks:
+        - name: "{{ docker_network_staging }}"
+
+  - name: Copy env file to {{ container_name }} container
+    command: docker cp /tmp/.env_staging {{ container_name }}:/app/.env
+
+  - name: Disable site local conf
+    shell: docker exec -it {{ container_name }} a2dissite {{ fqdn_local }}.conf
+
+  - name: Enable site staging conf
+    shell: docker exec -it {{ container_name }} a2ensite {{ fqdn_staging }}.conf
+
+  - name: Reload apache2
+    shell: docker exec -it {{ container_name }} service apache2 reload
+
+  - name: Run NPM prod
+    shell: docker exec -it {{ container_name }} npm run prod
+
+  - name: Clean up env and scecrets
+    command: rm -rf /tmp/.env_* && rm -rf /tmp/.secrets
+
+  - name: Clean up unused images and container
+    command: docker system prune -a -f
+      
